@@ -1,9 +1,9 @@
 import { openDatabaseSync, SQLiteDatabase } from "expo-sqlite";
+import { Expense } from "../types/expense";
 
 export const db: SQLiteDatabase = openDatabaseSync("expenses.db");
 
 export const initDB = () => {
-  // Tạo bảng
   db.execSync(`
     CREATE TABLE IF NOT EXISTS expenses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -15,9 +15,8 @@ export const initDB = () => {
     );
   `);
 
-  // Kiểm tra bảng có dữ liệu chưa
   const row = db.getFirstSync<{ count: number }>(
-    "SELECT COUNT(*) as count FROM expenses"
+    "SELECT COUNT(*) AS count FROM expenses"
   );
 
   if (row?.count === 0) {
@@ -27,17 +26,18 @@ export const initDB = () => {
       `INSERT INTO expenses (title, amount, category, paid, created_at)
        VALUES 
        (?, ?, ?, ?, ?),
-       (?, ?, ?, ?, ?),
        (?, ?, ?, ?, ?)`,
       [
         "Cà phê", 30000, "Đồ uống", 1, now,
         "Ăn trưa", 50000, "Ăn uống", 1, now,
-        "Gửi xe", 5000, "Khác", 1, now
       ]
     );
-
-    console.log("✓ Seed sample expenses!");
-  } else {
-    console.log("✓ Bảng expenses đã có dữ liệu.");
   }
+};
+
+// Lấy tất cả expenses
+export const getAllExpenses = (): Expense[] => {
+  return db.getAllSync<Expense>(
+    "SELECT * FROM expenses ORDER BY created_at DESC"
+  );
 };
