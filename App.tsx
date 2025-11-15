@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
+import { View, Text } from "react-native";
 import { initDB } from "./src/database/db";
 
 export default function App() {
@@ -7,6 +8,8 @@ export default function App() {
   }, []);
 
   return (
-    <></>
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <Text>Expense Notes App</Text>
+    </View>
   );
 }
