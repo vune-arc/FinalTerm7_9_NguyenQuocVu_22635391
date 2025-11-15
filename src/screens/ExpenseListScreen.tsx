@@ -8,15 +8,15 @@ import {
   Modal,
   TextInput,
   Alert,
-  Platform
+  ActivityIndicator,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker"; // npm i @react-native-picker/picker
 import {
   getAllExpenses,
   insertExpense,
-  toggleExpensePaid,
   updateExpense,
-  deleteExpense
+  toggleExpensePaid,
+  deleteExpense,
+  importExpensesFromAPI,
 } from "../db/db";
 import { Expense } from "../types/expense";
 
@@ -32,7 +32,10 @@ export default function ExpenseListScreen() {
 
   // Search & Filter
   const [searchText, setSearchText] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+
+  // Import API
+  const [loadingImport, setLoadingImport] = useState(false);
+  const [errorImport, setErrorImport] = useState<string | null>(null);
 
   useEffect(() => {
     loadExpenses();
@@ -43,9 +46,15 @@ export default function ExpenseListScreen() {
     setExpenses(data);
   };
 
+  const filteredExpenses = useMemo(() => {
+    const text = searchText.trim().toLowerCase();
+    return expenses.filter((e) => e.title.toLowerCase().includes(text));
+  }, [expenses, searchText]);
+
   const formatMoney = (amount: number) =>
     amount.toLocaleString("vi-VN") + "đ";
 
+  // Save / Add
   const handleSave = () => {
     try {
       if (!title.trim()) throw new Error("Title không được để trống");
@@ -57,13 +66,13 @@ export default function ExpenseListScreen() {
         updateExpense(editingId, {
           title: title.trim(),
           amount: amountNumber,
-          category: category.trim() || null
+          category: category.trim() || null,
         });
       } else {
         insertExpense({
           title: title.trim(),
           amount: amountNumber,
-          category: category.trim() || null
+          category: category.trim() || null,
         });
       }
 
@@ -78,11 +87,13 @@ export default function ExpenseListScreen() {
     }
   };
 
+  // Toggle Paid
   const handleTogglePaid = (id: number) => {
     toggleExpensePaid(id);
     loadExpenses();
   };
 
+  // Edit
   const handleEdit = (expense: Expense) => {
     setEditingId(expense.id);
     setTitle(expense.title);
@@ -91,56 +102,41 @@ export default function ExpenseListScreen() {
     setModalVisible(true);
   };
 
+  // Delete
   const handleDelete = (expense: Expense) => {
-    Alert.alert(
-      "Xác nhận xóa",
-      `Bạn có chắc muốn xóa "${expense.title}"?`,
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Xóa",
-          style: "destructive",
-          onPress: () => {
-            deleteExpense(expense.id);
-            loadExpenses();
-          }
-        }
-      ]
-    );
+    deleteExpense(expense.id);
+    loadExpenses();
   };
 
-  // Filtered list
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter((exp) => {
-      const matchTitle = exp.title.toLowerCase().includes(searchText.toLowerCase());
-      const matchCategory = categoryFilter ? exp.category === categoryFilter : true;
-      return matchTitle && matchCategory;
-    });
-  }, [expenses, searchText, categoryFilter]);
+  // Import from API
+  const handleImport = async () => {
+    setLoadingImport(true);
+    setErrorImport(null);
+    const result = await importExpensesFromAPI(
+      "https://67c83e5f0acf98d070859495.mockapi.io/api/v1/NguyenQuocVu_22635391"
+    );
+    setLoadingImport(false);
+    if (result.success) loadExpenses();
+    else setErrorImport("Import thất bại. Kiểm tra API.");
+  };
 
   return (
     <View style={styles.container}>
+      {/* Search & Import */}
+      <View style={styles.topBar}>
+        <TextInput
+          placeholder="Tìm kiếm..."
+          value={searchText}
+          onChangeText={setSearchText}
+          style={styles.searchInput}
+        />
+        <TouchableOpacity style={styles.importBtn} onPress={handleImport}>
+          <Text style={styles.importText}>Import</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* Search Input */}
-      <TextInput
-        placeholder="Tìm kiếm theo tiêu đề..."
-        value={searchText}
-        onChangeText={setSearchText}
-        style={styles.searchInput}
-      />
-
-      {/* Category Filter */}
-      {/* <Picker
-        selectedValue={categoryFilter}
-        onValueChange={(value) => setCategoryFilter(value)}
-        style={Platform.OS === "ios" ? styles.pickerIOS : styles.pickerAndroid}
-      >
-        <Picker.Item label="Tất cả danh mục" value={null} />
-        <Picker.Item label="Cà phê" value="Cà phê" />
-        <Picker.Item label="Ăn trưa" value="Ăn trưa" />
-        <Picker.Item label="Lau nhà" value="Lau nhà" />
-        <Picker.Item label="Đi chợ" value="Đi chợ" />
-      </Picker> */}
+      {loadingImport && <ActivityIndicator size="large" color="#28a745" />}
+      {errorImport && <Text style={styles.errorText}>{errorImport}</Text>}
 
       {filteredExpenses.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -168,14 +164,13 @@ export default function ExpenseListScreen() {
                   <Text
                     style={[
                       styles.paid,
-                      { color: item.paid ? "green" : "red" }
+                      { color: item.paid ? "green" : "red" },
                     ]}
                   >
                     {item.paid ? "Đã trả" : "Chưa trả"}
                   </Text>
                 </View>
 
-                {/* Edit Button */}
                 <TouchableOpacity
                   style={styles.editBtn}
                   onPress={() => handleEdit(item)}
@@ -183,7 +178,6 @@ export default function ExpenseListScreen() {
                   <Text style={styles.editText}>Sửa</Text>
                 </TouchableOpacity>
 
-                {/* Delete Button */}
                 <TouchableOpacity
                   style={styles.deleteBtn}
                   onPress={() => handleDelete(item)}
@@ -196,7 +190,7 @@ export default function ExpenseListScreen() {
         />
       )}
 
-      {/* FAB */}
+      {/* Nút + */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => {
@@ -258,16 +252,30 @@ export default function ExpenseListScreen() {
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  searchInput: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, marginBottom: 8 },
-  pickerAndroid: { marginBottom: 12, height: 40 },
-  pickerIOS: { marginBottom: 12 },
+  topBar: { flexDirection: "row", marginBottom: 10 },
+  searchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 40,
+  },
+  importBtn: {
+    marginLeft: 10,
+    backgroundColor: "#007bff",
+    paddingHorizontal: 12,
+    justifyContent: "center",
+    borderRadius: 6,
+  },
+  importText: { color: "#fff", fontWeight: "700" },
+  errorText: { color: "red", marginVertical: 6 },
 
   item: {
     flexDirection: "row",
@@ -275,7 +283,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     marginBottom: 10,
     borderRadius: 8,
-    elevation: 2
+    elevation: 2,
   },
   title: { fontSize: 16, fontWeight: "600" },
   category: { fontSize: 13, color: "#777" },
@@ -284,7 +292,6 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   emptyText: { fontSize: 16, color: "#666" },
 
-  // FAB
   fab: {
     position: "absolute",
     bottom: 30,
@@ -296,44 +303,41 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
-    zIndex: 10
+    zIndex: 10,
   },
   fabText: { color: "#fff", fontSize: 30, fontWeight: "700" },
 
-  // Edit button
   editBtn: {
     marginLeft: 10,
     backgroundColor: "#ffc107",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
-    justifyContent: "center"
+    justifyContent: "center",
   },
   editText: { color: "#fff", fontWeight: "700" },
 
-  // Delete button
   deleteBtn: {
     marginLeft: 10,
     backgroundColor: "#dc3545",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
-    justifyContent: "center"
+    justifyContent: "center",
   },
   deleteText: { color: "#fff", fontWeight: "700" },
 
-  // Modal
   overlay: {
     flex: 1,
     backgroundColor: "#00000066",
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
   },
   modalContainer: {
     width: "90%",
     backgroundColor: "#fff",
     padding: 20,
-    borderRadius: 12
+    borderRadius: 12,
   },
   modalHeader: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
   input: {
@@ -341,11 +345,11 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 8,
     padding: 10,
-    marginBottom: 12
+    marginBottom: 12,
   },
   modalButtons: { flexDirection: "row", justifyContent: "flex-end" },
   modalBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, marginLeft: 10 },
   cancel: { backgroundColor: "#ccc" },
   save: { backgroundColor: "#28a745" },
-  btnText: { color: "#fff", fontWeight: "700" }
+  btnText: { color: "#fff", fontWeight: "700" },
 });
