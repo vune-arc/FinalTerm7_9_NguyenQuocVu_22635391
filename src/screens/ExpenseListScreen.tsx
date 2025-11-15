@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import {
   getAllExpenses,
@@ -103,10 +104,24 @@ export default function ExpenseListScreen() {
   };
 
   // Delete
-  const handleDelete = (expense: Expense) => {
-    deleteExpense(expense.id);
-    loadExpenses();
-  };
+const handleDelete = (expense: Expense) => {
+  Alert.alert(
+    "Xác nhận xóa",
+    `Bạn có chắc muốn xóa khoản chi "${expense.title}" không?`,
+    [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Xóa",
+        style: "destructive",
+        onPress: () => {
+          deleteExpense(expense.id);
+          loadExpenses();
+        },
+      },
+    ]
+  );
+};
+
 
   // Import from API
   const handleImport = async () => {
@@ -158,32 +173,32 @@ export default function ExpenseListScreen() {
                 </Text>
               </View>
 
-              <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
-                <View style={{ alignItems: "flex-end" }}>
-                  <Text style={styles.amount}>{formatMoney(item.amount)}</Text>
-                  <Text
-                    style={[
-                      styles.paid,
-                      { color: item.paid ? "green" : "red" },
-                    ]}
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={styles.amount}>{formatMoney(item.amount)}</Text>
+                <Text
+                  style={[
+                    styles.paid,
+                    { color: item.paid ? "green" : "red" },
+                  ]}
+                >
+                  {item.paid ? "Đã trả" : "Chưa trả"}
+                </Text>
+
+                <View style={styles.actionBtns}>
+                  <TouchableOpacity
+                    style={styles.editBtn}
+                    onPress={() => handleEdit(item)}
                   >
-                    {item.paid ? "Đã trả" : "Chưa trả"}
-                  </Text>
+                    <Text style={styles.editText}>Sửa</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={() => handleDelete(item)}
+                  >
+                    <Text style={styles.deleteText}>Xóa</Text>
+                  </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity
-                  style={styles.editBtn}
-                  onPress={() => handleEdit(item)}
-                >
-                  <Text style={styles.editText}>Sửa</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => handleDelete(item)}
-                >
-                  <Text style={styles.deleteText}>Xóa</Text>
-                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           )}
@@ -303,22 +318,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
-    zIndex: 10,
+    zIndex: 5,
   },
   fabText: { color: "#fff", fontSize: 30, fontWeight: "700" },
 
   editBtn: {
-    marginLeft: 10,
     backgroundColor: "#ffc107",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
     justifyContent: "center",
+    marginBottom: 4,
   },
   editText: { color: "#fff", fontWeight: "700" },
 
   deleteBtn: {
-    marginLeft: 10,
     backgroundColor: "#dc3545",
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -327,17 +341,27 @@ const styles = StyleSheet.create({
   },
   deleteText: { color: "#fff", fontWeight: "700" },
 
+  actionBtns: {
+    marginTop: 6,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+
   overlay: {
     flex: 1,
     backgroundColor: "#00000066",
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 9,
+    elevation: 9,
   },
   modalContainer: {
     width: "90%",
     backgroundColor: "#fff",
     padding: 20,
     borderRadius: 12,
+    elevation: 10,
+    zIndex: 10,
   },
   modalHeader: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
   input: {
