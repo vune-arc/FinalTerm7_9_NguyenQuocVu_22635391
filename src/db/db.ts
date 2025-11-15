@@ -58,4 +58,14 @@ export const insertExpense = (expense: {
     [expense.title, expense.amount, expense.category ?? null, expense.paid ?? 1, now]
   );
 };
+// Toggle trạng thái paid
+export const toggleExpensePaid = (id: number) => {
+  const expense = db.getFirstSync<{ paid: number }>(
+    "SELECT paid FROM expenses WHERE id = ?",
+    [id]
+  );
+  if (!expense) return;
+  const newPaid = expense.paid === 1 ? 0 : 1;
+  db.runSync("UPDATE expenses SET paid = ? WHERE id = ?", [newPaid, id]);
+};
 

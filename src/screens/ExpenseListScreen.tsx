@@ -9,7 +9,7 @@ import {
   TextInput,
   Alert
 } from "react-native";
-import { getAllExpenses, insertExpense } from "../db/db";
+import { getAllExpenses, insertExpense, toggleExpensePaid } from "../db/db";
 import { Expense } from "../types/expense";
 
 export default function ExpenseListScreen() {
@@ -49,10 +49,15 @@ export default function ExpenseListScreen() {
       setAmount("");
       setCategory("");
       setModalVisible(false);
-      loadExpenses(); // reload danh sách
+      loadExpenses();
     } catch (err: any) {
       Alert.alert("Lỗi", err.message);
     }
+  };
+
+  const handleTogglePaid = (id: number) => {
+    toggleExpensePaid(id); // update SQLite
+    loadExpenses(); // reload danh sách
   };
 
   return (
@@ -66,7 +71,10 @@ export default function ExpenseListScreen() {
           data={expenses}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
-            <View style={styles.item}>
+            <TouchableOpacity
+              style={styles.item}
+              onPress={() => handleTogglePaid(item.id)}
+            >
               <View style={{ flex: 1 }}>
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.category}>
@@ -77,17 +85,20 @@ export default function ExpenseListScreen() {
               <View style={{ alignItems: "flex-end" }}>
                 <Text style={styles.amount}>{formatMoney(item.amount)}</Text>
                 <Text
-                  style={[styles.paid, { color: item.paid ? "green" : "red" }]}
+                  style={[
+                    styles.paid,
+                    { color: item.paid ? "green" : "red" }
+                  ]}
                 >
-                  {item.paid ? "Đã trả" : "Chưa trả"}
+                  {item.paid ? "Đã trả" : "Đang nợ"}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
         />
       )}
 
-      {/* Nút + ở góc phải dưới (FAB) */}
+      {/* Nút + ở góc phải dưới */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => setModalVisible(true)}
