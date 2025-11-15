@@ -68,4 +68,15 @@ export const toggleExpensePaid = (id: number) => {
   const newPaid = expense.paid === 1 ? 0 : 1;
   db.runSync("UPDATE expenses SET paid = ? WHERE id = ?", [newPaid, id]);
 };
+// Cập nhật expense
+export const updateExpense = (id: number, {
+  title,
+  amount,
+  category
+}: { title: string; amount: number; category?: string | null }) => {
+  db.runSync(
+    "UPDATE expenses SET title = ?, amount = ?, category = ? WHERE id = ?",
+    [title, amount, category || null, id]
+  );
+};
 

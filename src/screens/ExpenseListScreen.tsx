@@ -9,16 +9,25 @@ import {
   TextInput,
   Alert
 } from "react-native";
-import { getAllExpenses, insertExpense, toggleExpensePaid } from "../db/db";
+import {
+  getAllExpenses,
+  insertExpense,
+  toggleExpensePaid,
+  updateExpense
+} from "../db/db";
 import { Expense } from "../types/expense";
 
 export default function ExpenseListScreen() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // Form fields
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
+
+  // Khi edit
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadExpenses();
@@ -39,15 +48,26 @@ export default function ExpenseListScreen() {
       if (isNaN(amountNumber) || amountNumber <= 0)
         throw new Error("Amount phải là số > 0");
 
-      insertExpense({
-        title: title.trim(),
-        amount: amountNumber,
-        category: category.trim() || null
-      });
+      if (editingId !== null) {
+        // Update
+        updateExpense(editingId, {
+          title: title.trim(),
+          amount: amountNumber,
+          category: category.trim() || null
+        });
+      } else {
+        // Insert
+        insertExpense({
+          title: title.trim(),
+          amount: amountNumber,
+          category: category.trim() || null
+        });
+      }
 
       setTitle("");
       setAmount("");
       setCategory("");
+      setEditingId(null);
       setModalVisible(false);
       loadExpenses();
     } catch (err: any) {
@@ -56,8 +76,16 @@ export default function ExpenseListScreen() {
   };
 
   const handleTogglePaid = (id: number) => {
-    toggleExpensePaid(id); // update SQLite
-    loadExpenses(); // reload danh sách
+    toggleExpensePaid(id);
+    loadExpenses();
+  };
+
+  const handleEdit = (expense: Expense) => {
+    setEditingId(expense.id);
+    setTitle(expense.title);
+    setAmount(expense.amount.toString());
+    setCategory(expense.category || "");
+    setModalVisible(true);
   };
 
   return (
@@ -82,35 +110,53 @@ export default function ExpenseListScreen() {
                 </Text>
               </View>
 
-              <View style={{ alignItems: "flex-end" }}>
-                <Text style={styles.amount}>{formatMoney(item.amount)}</Text>
-                <Text
-                  style={[
-                    styles.paid,
-                    { color: item.paid ? "green" : "red" }
-                  ]}
+              <View style={{ alignItems: "flex-end", flexDirection: "row" }}>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={styles.amount}>{formatMoney(item.amount)}</Text>
+                  <Text
+                    style={[
+                      styles.paid,
+                      { color: item.paid ? "green" : "red" }
+                    ]}
+                  >
+                    {item.paid ? "Đã trả" : "Chưa trả"}
+                  </Text>
+                </View>
+
+                {/* Nút sửa */}
+                <TouchableOpacity
+                  style={styles.editBtn}
+                  onPress={() => handleEdit(item)}
                 >
-                  {item.paid ? "Đã trả" : "Đang nợ"}
-                </Text>
+                  <Text style={styles.editText}>Sửa</Text>
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           )}
         />
       )}
 
-      {/* Nút + ở góc phải dưới */}
+      {/* Nút + */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setModalVisible(true)}
+        onPress={() => {
+          setEditingId(null);
+          setTitle("");
+          setAmount("");
+          setCategory("");
+          setModalVisible(true);
+        }}
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
-      {/* Modal thêm chi tiêu */}
+      {/* Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.overlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalHeader}>Thêm khoản chi tiêu</Text>
+            <Text style={styles.modalHeader}>
+              {editingId !== null ? "Chỉnh sửa khoản chi" : "Thêm khoản chi"}
+            </Text>
 
             <TextInput
               placeholder="Tiêu đề"
@@ -173,7 +219,7 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   emptyText: { fontSize: 16, color: "#666" },
 
-  // Nút FAB
+  // FAB
   fab: {
     position: "absolute",
     bottom: 30,
@@ -188,6 +234,17 @@ const styles = StyleSheet.create({
     zIndex: 10
   },
   fabText: { color: "#fff", fontSize: 30, fontWeight: "700" },
+
+  // Edit button
+  editBtn: {
+    marginLeft: 10,
+    backgroundColor: "#ffc107",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    justifyContent: "center"
+  },
+  editText: { color: "#fff", fontWeight: "700" },
 
   // Modal
   overlay: {
