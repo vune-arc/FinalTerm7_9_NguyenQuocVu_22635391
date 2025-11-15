@@ -79,4 +79,8 @@ export const updateExpense = (id: number, {
     [title, amount, category || null, id]
   );
 };
+// Xóa expense
+export const deleteExpense = (id: number) => {
+  db.runSync("DELETE FROM expenses WHERE id = ?", [id]);
+};
 
