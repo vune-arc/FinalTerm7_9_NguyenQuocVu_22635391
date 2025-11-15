@@ -41,3 +41,21 @@ export const getAllExpenses = (): Expense[] => {
     "SELECT * FROM expenses ORDER BY created_at DESC"
   );
 };
+export const insertExpense = (expense: {
+  title: string;
+  amount: number;
+  category?: string | null;
+  paid?: number;
+}) => {
+  if (!expense.title.trim()) throw new Error("Title không được để trống");
+  if (isNaN(expense.amount) || expense.amount <= 0)
+    throw new Error("Amount phải là số lớn hơn 0");
+
+  const now = Date.now();
+  db.runSync(
+    `INSERT INTO expenses (title, amount, category, paid, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    [expense.title, expense.amount, expense.category ?? null, expense.paid ?? 1, now]
+  );
+};
+
